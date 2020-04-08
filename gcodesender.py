@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-"""\
-Simple g-code streaming script
-"""
  
 import serial
 import time
 import argparse
 import sys
 import logging
+import io
 
 logging.getLogger().setLevel(logging.DEBUG)
 
-parser = argparse.ArgumentParser(description='This is a basic gcode sender. http://crcibernetica.com')
+parser = argparse.ArgumentParser(description='This is a basic G-Code sender.')
 parser.add_argument('-p', '--port', help='Input USB port', required=True)
-parser.add_argument('-f', '--file', help='Gcode file name', type=argparse.FileType('r'), default=sys.stdin)
+parser.add_argument('-f', '--file', help='G-Code file', type=argparse.FileType('r'), default=sys.stdin)
 args = parser.parse_args()
 
 def stripline(line):
@@ -26,7 +24,7 @@ def stripline(line):
 def waitforwait(port):
 	logging.debug('Waiting for wait')
 	while True:
-		line = port.readline().decode('ascii').rstrip('\r\n')
+		line = port.readline().rstrip('\r\n')
 		if line is None or line == '':
 			raise Exception('Line time out')
 		if line == 'wait':
@@ -34,12 +32,11 @@ def waitforwait(port):
 		logging.debug('Ignoring line: %s', line)
 
 def sendline(port, line):
-	line = line.encode('ascii') + b'\r\n'
 	for retry in range(5):
-		port.write(line)
+		print(line, file=port)
 
 		while True:
-			reply = port.readline().decode('ascii').rstrip('\r\n')
+			reply = port.readline().rstrip('\r\n')
 
 			if reply == 'Resend:1':
 				break
@@ -53,10 +50,12 @@ def sendline(port, line):
 			logging.debug('Ignoring line: %s', reply)
 
 logging.info('Opening serial port %s', args.port)
-with serial.Serial(args.port, 115200, timeout=5) as port:
+with serial.Serial(args.port, 115200, timeout=5) as rawPort:
+	port = io.TextIOWrapper(rawPort, encoding='ascii', newline='\r\n', line_buffering=True)
+
 	logging.info('Waking up printer')
-	port.write(b'\r\n\r\n')
-	port.flushInput()
+	print('', file=port)
+	print('', file=port)
 	waitforwait(port)
 
 	logging.info('Sending gcode')
