@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
+import argparse
+import io
 
 def splitline(line):
 	comment = line.find(';')
@@ -28,6 +30,9 @@ class Traveler:
 	def traveling(self):
 		return self.travelLines > 0
 
+	def canAdd(self, args):
+		return 'Z' not in args and 'E' not in args
+
 	def addMove(self, args):
 		self.travelLines += 1
 
@@ -51,9 +56,6 @@ class Traveler:
 			self.speed = float(speed)
 
 	def buildTravel(self):
-		if self.travelLines == 0:
-			return ''
-
 		travel = 'G0'
 		if self.speed is not None:
 			travel += ' F%d' % self.speed
@@ -61,7 +63,7 @@ class Traveler:
 			travel += ' X%d' % self.x
 		if self.y is not None:
 			travel += ' Y%d' % self.y
-		travel += ' ; opt %i lines\r\n' % self.travelLines
+		travel += ' ; opt %i lines' % self.travelLines
 
 		return travel
 
@@ -76,8 +78,15 @@ class Traveler:
 		self.reset()
 		return travel
 
+parser = argparse.ArgumentParser(description='G-Code travel optimizer')
+parser.add_argument('-i', '--input', help='Gcode input file', type=argparse.FileType('r'), default=sys.stdin)
+parser.add_argument('-o', '--output', help='Gcode output file', type=argparse.FileType('wb'), default=sys.stdout.buffer)
+args = parser.parse_args()
+
+textOutput = io.TextIOWrapper(args.output, encoding='ascii', newline='\r\n')
+
 traveler = Traveler()
-for line in sys.stdin:
+for line in args.input:
 	line = line.rstrip('\r\n')
 
 	split = splitline(line)
@@ -86,17 +95,17 @@ for line in sys.stdin:
 
 	if cmd == 'G0':
 		_, args = parseline(split)
-		if 'Z' not in args and 'E' not in args:
+		if traveler.canAdd(args):
 			traveler.addMove(args)
 			accumulated = True
 
 	if not accumulated:
 		if traveler.traveling:
-			print(traveler.buildAndReset(), end='')
+			print(traveler.buildAndReset(), file=textOutput)
 
 		if cmd == 'G90':
 			traveler.relative = False
 		elif cmd == 'G91':
 			traveler.relative = True
 
-		print(line, end='\r\n')
+		print(line, file=textOutput)
