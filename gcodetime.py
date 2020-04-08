@@ -21,7 +21,7 @@ def parseline(split):
 	return command, parsed
 
 parser = argparse.ArgumentParser(description='G-Code printing time estimator')
-parser.add_argument('-i', '--input', help='Gcode input file', type=argparse.FileType('r'), default=sys.stdin)
+parser.add_argument('-f', '--file', help='Gcode file', type=argparse.FileType('r'), default=sys.stdin)
 args = parser.parse_args()
 
 class Head:
@@ -101,7 +101,7 @@ class Head:
 		return new, cur - new
 
 head = Head()
-for line in args.input:
+for line in args.file:
 	line = line.rstrip('\r\n')
 
 	split = splitline(line)
