@@ -60,9 +60,9 @@ class Traveler:
 		if self.speed is not None:
 			travel += ' F%d' % self.speed
 		if self.x is not None:
-			travel += ' X%d' % self.x
+			travel += ' X%f' % self.x
 		if self.y is not None:
-			travel += ' Y%d' % self.y
+			travel += ' Y%f' % self.y
 		travel += ' ; opt %i lines' % self.travelLines
 
 		return travel
