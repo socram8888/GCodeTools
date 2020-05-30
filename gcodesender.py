@@ -5,7 +5,6 @@ import time
 import argparse
 import sys
 import logging
-import io
 
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -24,7 +23,7 @@ def stripline(line):
 def waitforwait(port):
 	logging.debug('Waiting for wait')
 	while True:
-		line = port.readline().rstrip('\r\n')
+		line = port.readline().rstrip(b'\r\n').decode('ascii')
 		if line is None or line == '':
 			raise Exception('Line time out')
 		if line == 'wait':
@@ -33,10 +32,11 @@ def waitforwait(port):
 
 def sendline(port, line):
 	for retry in range(5):
-		print(line, file=port)
+		port.write(line.encode('ascii'))
+		port.write(b'\r\n')
 
 		while True:
-			reply = port.readline().rstrip('\r\n')
+			reply = port.readline().rstrip(b'\r\n').decode('ascii')
 
 			if reply == 'Resend:1':
 				break
@@ -50,12 +50,11 @@ def sendline(port, line):
 			logging.debug('Ignoring line: %s', reply)
 
 logging.info('Opening serial port %s', args.port)
-with serial.Serial(args.port, 115200, timeout=5) as rawPort:
-	port = io.TextIOWrapper(rawPort, encoding='ascii', newline='\r\n', line_buffering=True)
+with serial.Serial(args.port, 115200, timeout=5) as port:
 
 	logging.info('Waking up printer')
-	print('', file=port)
-	print('', file=port)
+	port.write(b'\r\n')
+	port.write(b'\r\n')
 	waitforwait(port)
 
 	logging.info('Sending gcode')
